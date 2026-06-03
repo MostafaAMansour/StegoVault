@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StegoVault — Hide in Plain Sight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --text: #e8e8f0;
+    --muted: #6b6b85;
+    --danger: #ef4444;
+    --success: #22c55e;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Syne', sans-serif; min-height: 100vh; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(rgba(124,58,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+  .orb1 { width: 500px; height: 500px; background: rgba(124,58,237,0.12); top: -150px; right: -100px; }
+  .orb2 { width: 400px; height: 400px; background: rgba(6,182,212,0.08); bottom: -100px; left: -100px; }
+
+  /* NAV */
+  nav {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #7c3aed, #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .nav-right { display: flex; align-items: center; gap: 1rem; }
+  #userBadge {
+    display: none; font-family: 'Space Mono', monospace; font-size: 0.75rem;
+    color: var(--accent2); background: rgba(6,182,212,0.1);
+    border: 1px solid rgba(6,182,212,0.25); padding: 0.3rem 0.8rem; border-radius: 4px;
+  }
+
+  /* BUTTONS */
+  .btn {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 0.65rem 1.4rem; border-radius: 8px; border: none;
+    cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff;
+    box-shadow: 0 0 20px rgba(124,58,237,0.3);
+  }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 0 30px rgba(124,58,237,0.5); transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+  .btn-danger:hover { background: rgba(239,68,68,0.25); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* AUTH OVERLAY */
+  #authOverlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10,10,15,0.96); backdrop-filter: blur(20px);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 2.5rem; width: 420px; box-shadow: 0 0 60px rgba(124,58,237,0.15);
+    position: relative; z-index: 1;
+  }
+  .auth-logo { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #7c3aed, #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .auth-tabs { display: flex; margin-bottom: 2rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .auth-tab {
+    flex: 1; padding: 0.7rem; text-align: center; cursor: pointer;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    background: transparent; color: var(--muted); border: none; transition: all 0.2s;
+  }
+  .auth-tab.active { background: var(--accent); color: #fff; }
+
+  /* FORM */
+  .field { margin-bottom: 1.2rem; }
+  .field label {
+    display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;
+  }
+  .field input {
+    width: 100%; padding: 0.75rem 1rem;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'Space Mono', monospace; font-size: 0.85rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  textarea {
+    width: 100%; padding: 0.75rem 1rem;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'Space Mono', monospace; font-size: 0.85rem;
+    outline: none; resize: vertical; min-height: 110px; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  /* FILE PICKER — label wraps everything, no invisible input overlay */
+  .file-pick {
+    display: block; border: 2px dashed var(--border); border-radius: 12px;
+    padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s;
+    background: transparent;
+  }
+  .file-pick:hover { border-color: var(--accent); background: rgba(124,58,237,0.05); }
+  .file-pick.has-file { border-color: var(--accent2); border-style: solid; }
+  .file-pick input[type="file"] { display: none; }  /* hidden, opened via label click */
+  .pick-icon { font-size: 2rem; display: block; margin-bottom: 0.4rem; }
+  .pick-hint { font-size: 0.82rem; color: var(--muted); }
+  .pick-hint em { color: var(--accent); font-style: normal; }
+  .pick-preview { margin-top: 0.7rem; }
+  .pick-preview img { max-height: 100px; border-radius: 8px; border: 1px solid var(--border); display: block; margin: 0 auto; }
+  .pick-name { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--accent2); margin-top: 0.4rem; }
+
+  /* RESULT BOXES */
+  .result { margin-top: 1rem; padding: 0.85rem 1rem; border-radius: 8px;
+    font-family: 'Space Mono', monospace; font-size: 0.82rem; display: none; }
+  .result.ok  { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.3);  color: var(--success); }
+  .result.err { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.3);  color: var(--danger); }
+
+  /* MAIN LAYOUT */
+  main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .main-tabs { display: flex; gap: 0.5rem; margin-bottom: 2.5rem; }
+  .main-tab {
+    padding: 0.6rem 1.3rem; border-radius: 8px; cursor: pointer;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    background: transparent; color: var(--muted); border: 1px solid transparent; transition: all 0.2s;
+  }
+  .main-tab.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+  .main-tab:hover:not(.active) { color: var(--text); }
+  .page { display: none; }
+  .page.active { display: block; }
+  .section-header { margin-bottom: 2rem; }
+  .section-header h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.03em; }
+  .section-header p { color: var(--muted); margin-top: 0.4rem; }
+  .accent-line { display: block; width: 40px; height: 3px; border-radius: 2px; margin-bottom: 1rem;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; }
+  .card-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 1.4rem; display: flex; align-items: center; gap: 0.6rem; }
+  .tag { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 4px; }
+  .tag-e { background: rgba(124,58,237,0.2); color: var(--accent); }
+  .tag-d { background: rgba(6,182,212,0.2); color: var(--accent2); }
+
+  /* DOWNLOAD AREA */
+  .download-area { margin-top: 1.2rem; text-align: center; display: none; }
+  .download-area img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 0.8rem; display: block; }
+
+  /* DECODED OUTPUT */
+  #decodeOutput {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem; min-height: 120px;
+    font-family: 'Space Mono', monospace; font-size: 0.88rem; color: var(--muted);
+    white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+  }
+
+  /* SPINNER */
+  .spin {
+    display: inline-block; width: 15px; height: 15px;
+    border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff;
+    border-radius: 50%; animation: rotating 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes rotating { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.8rem 1.2rem; font-size: 0.85rem; z-index: 9999;
+    transform: translateY(16px); opacity: 0; transition: all 0.3s; pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  @media (max-width: 680px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    nav { padding: 1rem 1.2rem; }
+    main { padding: 1.5rem 1rem; }
+    .auth-box { width: 95vw; padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<!-- AUTH OVERLAY -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">StegoVault</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuth('login')">Login</button>
+      <button class="auth-tab"        id="tabSignup" onclick="switchAuth('signup')">Sign Up</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="loginUser" placeholder="your_username" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div class="field">
+        <label>Image Password</label>
+        <label class="file-pick" id="loginImgPick" onclick="openPicker('loginImg')">
+          <input type="file" id="loginImg" accept="image/*" />
+          <span class="pick-icon">🖼️</span>
+          <span class="pick-hint">Drop or <em>click to choose</em> your image key</span>
+          <div class="pick-preview" id="loginImgPreview"></div>
+          <div class="pick-name"   id="loginImgName"></div>
+        </label>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()" id="loginBtn">Unlock Vault</button>
+      <div class="result" id="loginResult"></div>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signupForm" style="display:none">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="signupUser" placeholder="choose_username" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="signupPass" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+      <div class="field">
+        <label>Image Password <span style="color:var(--muted);font-size:0.7rem;text-transform:none;font-weight:400">(required on every login)</span></label>
+        <label class="file-pick" id="signupImgPick" onclick="openPicker('signupImg')">
+          <input type="file" id="signupImg" accept="image/*" />
+          <span class="pick-icon">🔑</span>
+          <span class="pick-hint">Choose your <em>secret image key</em></span>
+          <div class="pick-preview" id="signupImgPreview"></div>
+          <div class="pick-name"   id="signupImgName"></div>
+        </label>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doSignup()" id="signupBtn">Create Account</button>
+      <div class="result" id="signupResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">StegoVault</div>
+  <div class="nav-right">
+    <span id="userBadge"></span>
+    <button class="btn btn-danger" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- APP -->
+<main>
+  <div class="main-tabs">
+    <button class="main-tab active" id="mtEncode" onclick="switchTab('encode')">Encode</button>
+    <button class="main-tab"        id="mtDecode" onclick="switchTab('decode')">Decode</button>
+  </div>
+
+  <!-- ENCODE -->
+  <div class="page active" id="encodePage">
+    <div class="section-header">
+      <span class="accent-line"></span>
+      <h1>Hide a Message</h1>
+      <p>Embed a secret inside an image using LSB steganography — invisible to the naked eye.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="tag tag-e">Step 1</span> Carrier Image</div>
+        <label class="file-pick" id="encodeImgPick" onclick="openPicker('encodeImg')">
+          <input type="file" id="encodeImg" accept="image/*" />
+          <span class="pick-icon">📸</span>
+          <span class="pick-hint">Drop or <em>click to browse</em></span>
+          <div class="pick-preview" id="encodeImgPreview"></div>
+          <div class="pick-name"   id="encodeImgName"></div>
+        </label>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-e">Step 2</span> Secret Message</div>
+        <div class="field">
+          <label>Message to hide</label>
+          <textarea id="encodeMsg" placeholder="Type your secret message…"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="doEncode()" id="encodeBtn">Encode &amp; Download</button>
+        <div class="result" id="encodeResult"></div>
+        <div class="download-area" id="encodeDownload">
+          <img id="encodedPreviewImg" src="" alt="encoded" />
+          <a id="encodedLink" href="#" download="encoded.png" class="btn btn-primary">⬇ Download PNG</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DECODE -->
+  <div class="page" id="decodePage">
+    <div class="section-header">
+      <span class="accent-line"></span>
+      <h1>Reveal a Message</h1>
+      <p>Upload any steganographically encoded image to extract the hidden text.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="tag tag-d">Upload</span> Encoded Image</div>
+        <label class="file-pick" id="decodeImgPick" onclick="openPicker('decodeImg')">
+          <input type="file" id="decodeImg" accept="image/*" />
+          <span class="pick-icon">🔍</span>
+          <span class="pick-hint">Drop or <em>click to browse</em></span>
+          <div class="pick-preview" id="decodeImgPreview"></div>
+          <div class="pick-name"   id="decodeImgName"></div>
+        </label>
+        <div style="margin-top:1rem">
+          <button class="btn btn-primary" onclick="doDecode()" id="decodeBtn">Reveal Message</button>
+        </div>
+        <div class="result" id="decodeResult"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-d">Result</span> Hidden Message</div>
+        <div id="decodeOutput">Decoded message will appear here…</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────────────────────
+const API = 'http://localhost:8000';
+
+let token = localStorage.getItem('stego_token') || null;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Wire up file inputs — must happen after DOM ready
+  wireFilePicker('loginImg',   'loginImgPick',   'loginImgPreview',   'loginImgName');
+  wireFilePicker('signupImg',  'signupImgPick',  'signupImgPreview',  'signupImgName');
+  wireFilePicker('encodeImg',  'encodeImgPick',  'encodeImgPreview',  'encodeImgName');
+  wireFilePicker('decodeImg',  'decodeImgPick',  'decodeImgPreview',  'decodeImgName');
+
+  if (token) verifyToken();
+  else showAuthOverlay();
+});
+
+// ─── File picker helpers ──────────────────────────────────────────────────────
+function openPicker(inputId) {
+  // Prevent double-fire from label's default behaviour; we trigger manually
+  document.getElementById(inputId).click();
+}
+
+function wireFilePicker(inputId, pickId, previewId, nameId) {
+  const input = document.getElementById(inputId);
+  const pick  = document.getElementById(pickId);
+
+  // Remove the onclick="openPicker(...)" approach — use a real click handler
+  // so we avoid the label double-click bug on some browsers
+  pick.removeAttribute('onclick');
+
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    pick.classList.add('has-file');
+    document.getElementById(nameId).textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById(previewId).innerHTML =
+        `<img src="${ev.target.result}" alt="preview" />`;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Drag and drop onto the label
+  pick.addEventListener('dragover', e => { e.preventDefault(); pick.style.borderColor = 'var(--accent)'; });
+  pick.addEventListener('dragleave', () => pick.style.borderColor = '');
+  pick.addEventListener('drop', e => {
+    e.preventDefault(); pick.style.borderColor = '';
+    const dt = e.dataTransfer;
+    if (dt.files.length) {
+      // Transfer files to input
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(dt.files[0]);
+      input.files = dataTransfer.files;
+      input.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+async function verifyToken() {
+  try {
+    const r = await fetch(`${API}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (r.ok) { const d = await r.json(); showApp(d.username); }
+    else clearAuth();
+  } catch { clearAuth(); }
+}
+
+function showApp(username) {
+  document.getElementById('authOverlay').style.display = 'none';
+  const badge = document.getElementById('userBadge');
+  badge.textContent = '◉ ' + username;
+  badge.style.display = 'inline-block';
+  document.getElementById('logoutBtn').style.display = '';
+}
+
+function showAuthOverlay() {
+  document.getElementById('authOverlay').style.display = 'flex';
+}
+
+function clearAuth() {
+  token = null;
+  localStorage.removeItem('stego_token');
+  showAuthOverlay();
+  document.getElementById('userBadge').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+}
+
+function logout() { clearAuth(); }
+
+function switchAuth(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabSignup').classList.toggle('active', !isLogin);
+  document.getElementById('loginForm').style.display  = isLogin ? '' : 'none';
+  document.getElementById('signupForm').style.display = isLogin ? 'none' : '';
+}
+
+// ─── Signup ───────────────────────────────────────────────────────────────────
+async function doSignup() {
+  const username = document.getElementById('signupUser').value.trim();
+  const password = document.getElementById('signupPass').value;
+  const imgFile  = document.getElementById('signupImg').files[0];
+  const res      = document.getElementById('signupResult');
+
+  if (!username) return showResult(res, 'err', '✗ Username is required');
+  if (!password) return showResult(res, 'err', '✗ Password is required');
+  if (!imgFile)  return showResult(res, 'err', '✗ Please choose an image password');
+
+  const btn = document.getElementById('signupBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Creating…';
+  hideResult(res);
+
+  const fd = new FormData();
+  fd.append('username', username);
+  fd.append('password', password);
+  fd.append('image', imgFile);
+
+  try {
+    const r = await fetch(`${API}/auth/signup`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (r.ok) {
+      showResult(res, 'ok', '✓ Account created! Switching to login…');
+      setTimeout(() => switchAuth('login'), 1500);
+    } else {
+      showResult(res, 'err', '✗ ' + (d.detail || 'Signup failed'));
+    }
+  } catch {
+    showResult(res, 'err', '✗ Cannot reach server — is the backend running?');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const imgFile  = document.getElementById('loginImg').files[0];
+  const res      = document.getElementById('loginResult');
+
+  if (!username) return showResult(res, 'err', '✗ Username is required');
+  if (!password) return showResult(res, 'err', '✗ Password is required');
+  if (!imgFile)  return showResult(res, 'err', '✗ Please upload your image password');
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Verifying…';
+  hideResult(res);
+
+  const fd = new FormData();
+  fd.append('username', username);
+  fd.append('password', password);
+  fd.append('image', imgFile);
+
+  try {
+    const r = await fetch(`${API}/auth/login`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (r.ok) {
+      token = d.access_token;
+      localStorage.setItem('stego_token', token);
+      showApp(d.username);
+      toast('Welcome back, ' + d.username + '!');
+    } else {
+      showResult(res, 'err', '✗ ' + (d.detail || 'Login failed'));
+    }
+  } catch {
+    showResult(res, 'err', '✗ Cannot reach server — is the backend running?');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Unlock Vault';
+  }
+}
+
+// ─── Main tabs ────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('mtEncode').classList.toggle('active', tab === 'encode');
+  document.getElementById('mtDecode').classList.toggle('active', tab === 'decode');
+  document.getElementById('encodePage').classList.toggle('active', tab === 'encode');
+  document.getElementById('decodePage').classList.toggle('active', tab === 'decode');
+}
+
+// ─── Encode ───────────────────────────────────────────────────────────────────
+async function doEncode() {
+  const imgFile = document.getElementById('encodeImg').files[0];
+  const msg     = document.getElementById('encodeMsg').value.trim();
+  const res     = document.getElementById('encodeResult');
+
+  if (!imgFile) return showResult(res, 'err', '✗ Please choose a carrier image');
+  if (!msg)     return showResult(res, 'err', '✗ Please type a message to hide');
+
+  const btn = document.getElementById('encodeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Encoding…';
+  document.getElementById('encodeDownload').style.display = 'none';
+  hideResult(res);
+
+  const fd = new FormData();
+  fd.append('image', imgFile);
+  fd.append('message', msg);
+
+  try {
+    const r = await fetch(`${API}/stego/encode`, { method: 'POST', body: fd });
+    if (r.ok) {
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      document.getElementById('encodedPreviewImg').src = url;
+
+      // Force download automatically
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'encoded.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Also keep the manual download button visible
+      document.getElementById('encodedLink').href = url;
+      document.getElementById('encodeDownload').style.display = '';
+      showResult(res, 'ok', '✓ Message hidden! Download started automatically.');
+      toast('Message encoded successfully!');
+    } else {
+      const d = await r.json();
+      showResult(res, 'err', '✗ ' + (d.detail || 'Encoding failed'));
+    }
+  } catch {
+    showResult(res, 'err', '✗ Cannot reach server — is the backend running?');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Encode & Download';
+  }
+}
+
+// ─── Decode ───────────────────────────────────────────────────────────────────
+async function doDecode() {
+  const imgFile = document.getElementById('decodeImg').files[0];
+  const res     = document.getElementById('decodeResult');
+  const output  = document.getElementById('decodeOutput');
+
+  if (!imgFile) return showResult(res, 'err', '✗ Please upload an image');
+
+  const btn = document.getElementById('decodeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Scanning…';
+  output.textContent = 'Analysing pixels…';
+  output.style.color = 'var(--muted)';
+  hideResult(res);
+
+  const fd = new FormData();
+  fd.append('image', imgFile);
+
+  try {
+    const r = await fetch(`${API}/stego/decode`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (r.ok) {
+      output.textContent = d.message;
+      output.style.color = 'var(--success)';
+      showResult(res, 'ok', '✓ Hidden message found!');
+      toast('Message decoded!');
+    } else {
+      output.textContent = 'No hidden message found.';
+      output.style.color = 'var(--danger)';
+      showResult(res, 'err', '✗ ' + (d.detail || 'No message found'));
+    }
+  } catch {
+    showResult(res, 'err', '✗ Cannot reach server — is the backend running?');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Reveal Message';
+  }
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function showResult(el, type, msg) {
+  el.className = 'result ' + type;
+  el.textContent = msg;
+  el.style.display = '';
+}
+function hideResult(el) { el.style.display = 'none'; }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
