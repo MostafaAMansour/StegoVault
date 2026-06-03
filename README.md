@@ -7,6 +7,8 @@ A steganography web app that lets you:
 
 ---
 
+**Core concepts:** https://drive.google.com/file/d/15phTVzwHr11rwgvKUWbsCnBDHe1_903Q/view?usp=sharing**
+
 ## Tech Stack
 
 | Layer     | Tech                            |
