@@ -7,7 +7,8 @@ A steganography web app that lets you:
 
 ---
 
-**Core concepts:** https://drive.google.com/file/d/15phTVzwHr11rwgvKUWbsCnBDHe1_903Q/view?usp=sharing**
+**Core concepts:** https://drive.google.com/file/d/15phTVzwHr11rwgvKUWbsCnBDHe1_903Q/view?usp=sharing
+**Testing video:** https://drive.google.com/file/d/1QSZ1QkHw2tYfWaVxqweUGUI7NIg6B4RM/view?usp=sharing
 
 ## Tech Stack
 
